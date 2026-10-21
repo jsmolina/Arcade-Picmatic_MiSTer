@@ -52,7 +52,8 @@ module denise (
   input  wire           ecs,            // enables ECS chipset features
   input  wire           aga,            // enables AGA features
   output wire           hires,          // hires
-  output wire           shres           // shres
+  output wire           shres,          // shres
+  output reg            zd              // genlock: background colour 0 (transparent), aligned with red/green/blue
 );
 
 
@@ -201,7 +202,7 @@ wire [ 3-1:0] pf2of;      // bitplane color table offset when playfield 2 has pr
 wire          loct;       // 12-bit color palette select
 wire [ 2-1:0] spres;      // sprite resolution select
 wire          brdrblnk;   // border blank enable; disabled when ECSENA is low
-//wire          brdntran;   // border area is non-transparent; disabled when ECSENA is low
+wire          brdntran;   // border area is non-transparent; disabled when ECSENA is low
 //wire          zdclken;    // zd pin ??
 wire          brdsprt;    // enable srpites outside the display window; disabled when ECSENA is low
 //wire          extblken;   // causes blank output to be programmable; disabled when ECSENA is low
@@ -220,7 +221,7 @@ assign pf2of    = bplcon3[12:10];
 assign loct     = bplcon3[9] & aga;
 assign spres    = bplcon3[7:6] & {2{aga}};
 assign brdrblnk = bplcon3[5] & ecsena;
-//assign brdntran = bplcon3[4] & ecsena;
+assign brdntran = bplcon3[4] & ecsena;
 //assign zdclken  = bplcon3[2] & ecsena;
 assign brdsprt  = bplcon3[1] & ecsena;
 //assign extblken = bplcon3[0] & ecsena;
@@ -479,6 +480,7 @@ reg sprsel_del;
 always @(posedge clk) begin
   window_del <= window_ena;
   sprsel_del <= sprsel;
+  zd         <= !clut_data && !(brdntran && !window_ena); // clut_rgb lags clut_data by one clock too
 end
 
 // ham_rgb / clut_rgb multiplexer

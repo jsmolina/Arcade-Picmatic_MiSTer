@@ -24,7 +24,7 @@
 //--------------------------------------------------------------------------//
 //--------------------------------------------------------------------------//
 
-module cpu_wrapper
+module cpu_wrapper #(parameter BOARDS = 1) // 0: no Toccata/A2065 autoconfig (plain A500)
 (
 	input             reset,
 	output reg        reset_out,
@@ -624,8 +624,8 @@ always @(posedge clk) begin
 
 	if (~reset | ~reset_out) begin
 		ac_memcard  <= (cpucfg[1] & ~ec020) ? fastramcfg : fastramcfg[2] ? 3'd3 : {1'b0, fastramcfg[1:0]};
-		ac_toccata  <= cdtv_mode ? 1'b0 : 1'b1;
-		ac_a2065    <= 1;
+		ac_toccata  <= BOARDS && !cdtv_mode;
+		ac_a2065    <= BOARDS;
 		ac_cdtv     <= cdtv_mode;
 		cdtv_base   <= 8'hE9;
 		z2ram_ena   <= 0;
@@ -679,7 +679,7 @@ always @(posedge clk) begin
 	end
 end
 
-assign toccata_ena = ~ac_toccata & ~cdtv_mode;
-assign a2065_ena   = ~ac_a2065;
+assign toccata_ena = BOARDS && ~ac_toccata & ~cdtv_mode;
+assign a2065_ena   = BOARDS && ~ac_a2065;
 
 endmodule

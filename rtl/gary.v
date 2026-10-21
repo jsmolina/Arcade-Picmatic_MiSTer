@@ -83,6 +83,7 @@ module gary
 	input   [7:0] cdtv_base,
 
 	input         cdtv_mode,
+	input         picmatic, // Picmatic board: game ROM at $F00000, NVRAM at $F40000, I/O at $F60000
 
 	output        ram_rd, //bus read
 	output        ram_hwr, //bus high write
@@ -107,6 +108,8 @@ module gary
 	output       sel_cdtv,
 	output       sel_cdtv_nvram,
 	output       sel_cdtv_card,
+	output       sel_picmatic_nvram,
+	output       sel_picmatic_io,
 
 	output reg   rom_readonly = 0 //when zero allows to write to $fc-$ff, blocks effect of kick256kmirror.  
 );
@@ -135,10 +138,12 @@ assign ram_lwr = dbr ?  dbwe : cpu_lwr;
 wire kick_mirror_a8 = cpu_address_in[23:19] == 5'b1010_1;
 wire kick_mirror_b0 = cpu_address_in[23:19] == 5'b1011_0;
 wire kick_mirror_f0 = cdtv_mode && cpu_address_in[23:19] == 5'b1111_0;
+wire pm_rom         = picmatic && cpu_address_in[23:18] == 6'b1111_00; // $F00000-$F3FFFF -> 1MB rom upper half ($E00000)
 wire cdtv_card_win  = cdtv_mode && cpu_address_in[23:19] == 5'b1110_0 && !cpu_hlt;
 wire [4:0] cpu_addr_hi_remap = kick_mirror_a8 ? 5'b1111_1 :
                                kick_mirror_b0 ? 5'b1110_0 :
                                kick_mirror_f0 ? 5'b1110_0 :
+                               pm_rom         ? 5'b1110_0 :
                                cpu_address_in[23:19];
 assign ram_address_out  = dbr ? {3'b000, dma_address_in[20:1]} : {cpu_addr_hi_remap, cpu_address_in[18:1]};
    
@@ -177,7 +182,7 @@ begin
 		sel_slow[1] = t_sel_slow[1];
 		sel_slow[2] = t_sel_slow[2];
 		sel_kick    = (cpu_address_in[23:19]==5'b1111_1 && (cpu_rd || cpu_hlt || (!rom_readonly && cpu_address_in[18])))  || (cpu_rd && ovl && cpu_address_in[23:19]==5'b0000_0) || (cpu_rd && kick_mirror_a8);
-		sel_kick1mb = (cpu_address_in[23:19]==5'b1110_0 && ((cpu_rd && !cdtv_card_win) || cpu_hlt)) || (cpu_rd && kick_mirror_b0) || (cpu_rd && kick_mirror_f0);
+		sel_kick1mb = (cpu_address_in[23:19]==5'b1110_0 && ((cpu_rd && !cdtv_card_win) || cpu_hlt)) || (cpu_rd && kick_mirror_b0) || (cpu_rd && kick_mirror_f0) || (cpu_rd && pm_rom);
 		sel_kick256kmirror = cpu_address_in[23:19]==5'b1111_1 &&  cpu_rd && rom_readonly && !cpu_hlt && bootrom;
 	end
 end
@@ -203,6 +208,9 @@ assign sel_a2065   = a2065_ena && cpu_address_in[23:16]==a2065_base;
 assign sel_cdtv       = cdtv_mode && cpu_address_in[23:16]==cdtv_base;
 assign sel_cdtv_nvram = cdtv_mode && cpu_address_in[23:15]==9'b1101_1100_1;
 assign sel_cdtv_card  = cdtv_card_win;
+
+assign sel_picmatic_nvram = picmatic && cpu_address_in[23:16]==8'hF4;
+assign sel_picmatic_io    = picmatic && cpu_address_in[23:16]==8'hF6;
 
 //data bus slow down
 assign dbs = cpu_address_in[23:21]==3'b000 || cpu_address_in[23:20]==4'b1100 || cpu_address_in[23:19]==5'b1101_0 || cpu_address_in[23:16]==8'b1101_1111;

@@ -237,6 +237,7 @@ module minimig
 	output 	     ce_pix,
 	output  [1:0] res,
 	output reg    ntsc,
+	output        zd,          // genlock transparency (Denise colour 0), aligned with red/green/blue
 
 	//audio
 	output [14:0] ldata,       // left DAC data
@@ -257,6 +258,17 @@ module minimig
 	input   [7:0] a2065_base,
 
 	output        cdtv_mode,
+
+	// Picmatic arcade board
+	input         picmatic,
+	input   [9:1] pm_flag,     // cabinet buttons, WinUAE alg_flag bit numbers
+	input  [11:0] pm_gun_x,
+	input  [11:0] pm_gun_y,
+	output [15:0] pm_serper,   // Paula SERPER, for the LaserDisc UART
+	input  [11:0] pm_nv_addr,
+	input   [7:0] pm_nv_din,
+	input         pm_nv_we,
+	output  [7:0] pm_nv_dout,
 
 	output [15:0] cdtv_din,
 	output        cdtv_selack,
@@ -386,6 +398,12 @@ wire        sel_cia_b;			//cia B select
 wire        sel_cdtv;
 wire        sel_cdtv_nvram;
 wire        sel_cdtv_card;
+wire        sel_picmatic_nvram;
+wire        sel_picmatic_io;
+wire        sel_picmatic = sel_picmatic_nvram | sel_picmatic_io;
+wire [15:0] pm_dout;
+wire        pm_joy_sel;
+wire [15:0] pm_joy_dout;
 wire [15:0] cdtv_bridge_dout;
 wire        cdtv_bridge_selack;
 wire [15:0] cdtv_nvr_dout;
@@ -713,7 +731,8 @@ denise DENISE1
 	.ecs(|chipset_config[4:3]),
 	.aga(chipset_config[4]),
 	.hires(hires),
-	.shres(shres)
+	.shres(shres),
+	.zd(zd)
 );
 
 //instantiate cia A
@@ -913,6 +932,7 @@ gary GARY1
 	.a2065_ena(a2065_ena),
 	.a2065_base(a2065_base),
 	.cdtv_mode(chipset_config[5]),
+	.picmatic(picmatic),
 	.ram_rd(ram_rd),
 	.ram_hwr(ram_hwr),
 	.ram_lwr(ram_lwr),
@@ -935,6 +955,8 @@ gary GARY1
 	.sel_cdtv(sel_cdtv),
 	.sel_cdtv_nvram(sel_cdtv_nvram),
 	.sel_cdtv_card(sel_cdtv_card),
+	.sel_picmatic_nvram(sel_picmatic_nvram),
+	.sel_picmatic_io(sel_picmatic_io),
 	.reset(reset),
 	.clk(clk),
 	.rom_readonly(rom_readonly),
@@ -1168,8 +1190,38 @@ cdtv_nvram #(.ADDR_W(13)) cdtv_card_inst
 	.clear_dirty     (cdtv_card_clear_dirty )
 );
 
-assign cdtv_din    = sel_cdtv_nvram ? cdtv_nvr_dout : sel_cdtv_card ? cdtv_card_dout : cdtv_bridge_dout;
-assign cdtv_selack = cdtv_bridge_selack | sel_cdtv_nvram | sel_cdtv_card;
+assign cdtv_din    = sel_picmatic ? pm_dout : sel_cdtv_nvram ? cdtv_nvr_dout : sel_cdtv_card ? cdtv_card_dout : cdtv_bridge_dout;
+assign cdtv_selack = cdtv_bridge_selack | sel_cdtv_nvram | sel_cdtv_card | sel_picmatic;
+
+picmatic picmatic_inst
+(
+	.clk         (clk                  ),
+	.clk7_en     (clk7_en              ),
+	.reset       (reset                ),
+
+	.sel_nvram   (sel_picmatic_nvram   ),
+	.sel_io      (sel_picmatic_io      ),
+	.addr        (cpu_address_out      ),
+	.din         (cpu_data_out         ),
+	.dout        (pm_dout              ),
+	.hwr         (cpu_hwr              ),
+	.lwr         (cpu_lwr              ),
+
+	.reg_address (reg_address          ),
+	.reg_din     (custom_data_in       ),
+	.joy_sel     (pm_joy_sel           ),
+	.joy_dout    (pm_joy_dout          ),
+	.serper      (pm_serper            ),
+
+	.flag        (pm_flag              ),
+	.gun_x       (pm_gun_x             ),
+	.gun_y       (pm_gun_y             ),
+
+	.nv_addr     (pm_nv_addr           ),
+	.nv_din      (pm_nv_din            ),
+	.nv_we       (pm_nv_we             ),
+	.nv_dout     (pm_nv_dout           )
+);
 //-------------------------------------------------------------------------------------
 
 //data multiplexer
@@ -1184,7 +1236,7 @@ assign cpu_data_in[15:0]= gary_data_out[15:0]
 assign custom_data_out[15:0] = agnus_data_out[15:0]
 							 | paula_data_out[15:0]
 							 | denise_data_out[15:0]
-							 | user_data_out[15:0];
+							 | (picmatic & pm_joy_sel ? pm_joy_dout : user_data_out[15:0]);
 
 //--------------------------------------------------------------------------------------
 
