@@ -99,6 +99,7 @@ module agnus
 	input         a1k,             // enable A1000 OCS features
 	input         ecs,             // enable ECS features
 	input         aga,             // enables AGA features
+	input         genlock,         // a genlock supplies sync (Picmatic): ERSY keeps the internal beam
 	input         floppy_speed     // allocates refresh slots for disk DMA
 );
 
@@ -475,6 +476,7 @@ agnus_beamcounter  bc1
 	.cck(cck),
 	.ntsc(ntsc),
 	.aga(aga),
+	.genlock(genlock),
 	.ecs(ecs),
 	.a1k(a1k),
 	.reg_address_in(reg_address),

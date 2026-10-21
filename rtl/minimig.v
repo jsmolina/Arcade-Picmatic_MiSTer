@@ -586,6 +586,7 @@ agnus AGNUS1
 	.a1k(chipset_config[2]),
 	.ecs(|chipset_config[4:3]),
 	.aga(chipset_config[4]),
+	.genlock(picmatic),
 	.floppy_speed(floppy_speed)
 );
 

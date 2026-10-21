@@ -32,6 +32,7 @@ module agnus_beamcounter
 	input	            cck,            // CCK clock
 	input	            ntsc,           // NTSC mode switch
 	input             aga,            
+	input             genlock,        // external sync present: ERSY never stalls the beam
 	input	            ecs,            // ECS enable switch
 	input	            a1k,            // enable A1000 VBL interrupt timing
 	input	     [15:0] data_in,        // bus data in
@@ -273,7 +274,7 @@ always @(posedge clk) begin
 			hpos[8:1] <= data_in[7:0]; 
 		else if (end_of_line)
 			hpos[8:1] <= 0;
-		else if (cck && (~ersy || |hpos[8:1]))
+		else if (cck && (~ersy || genlock || |hpos[8:1]))
 			hpos[8:1] <= hpos[8:1] + 1'b1;
 	end
 end

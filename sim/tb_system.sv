@@ -86,6 +86,22 @@ always @(posedge clk) if ($test$plusargs("BUSDBG") && released && dut.minimig.cp
 	         {dut.chip_addr, 1'b0}, dut.minimig.gary_data_out, dut.minimig.cia_data_out, dut.minimig.gayle_data_out, dut.minimig.cart_data_out,
 	         dut.minimig.rtc_out, dut.minimig.toccata_out, dut.minimig.a2065_dout, dut.minimig.cpu_data_in, dut.cpu_wrapper.chip_data);
 
+// last 48 CPU bus cycles, printed at the end
+reg [23:0] ring_a[48];
+reg [15:0] ring_d[48];
+reg        ring_w[48];
+integer    ring_i = 0;
+always @(posedge clk) if (released && dt_d && !dut.chip_dtack) begin
+	ring_a[ring_i % 48] <= {dut.chip_addr, 1'b0};
+	ring_d[ring_i % 48] <= dut.chip_rw ? dut.chip_din : dut.chip_dout;
+	ring_w[ring_i % 48] <= !dut.chip_rw;
+	ring_i <= ring_i + 1;
+end
+task dump_ring;
+	integer k;
+	for (k = 0; k < 48; k++) $display("  tail %s %06h %04h", ring_w[(ring_i + k) % 48] ? "wr" : "rd", ring_a[(ring_i + k) % 48], ring_d[(ring_i + k) % 48]);
+endtask
+
 // first instruction fetch from the game ROM
 reg rom_seen = 0;
 always @(posedge clk) if (!rom_seen && dut.minimig.cpu_rd && pm_a[23:18] == 6'b1111_00) begin
@@ -126,6 +142,15 @@ always @(posedge clk) begin
 			$display("state: uio_boot %0d cpuhlt %b cpurst %b usrrst %b chipset %h mem %h cpu %h _cpu_reset %b dl %b wait %b", dut.uio_boot.state,
 			         dut.minimig.cpuhlt, dut.minimig.cpurst, dut.minimig.usrrst, dut.minimig.chipset_config, dut.minimig.memory_config, dut.minimig.cpucfg, dut.cpu_rst, dut.ioctl_download, dut.ioctl_wait);
 			$display("reset %b reset_d %b locked %b sys_reset %b nrst_out %b", dut.reset, dut.reset_d, dut.locked, dut.minimig.sys_reset, dut.cpu_nrst_out);
+			dump_ring();
+			if ($test$plusargs("CHIPDUMP")) begin : chipdump
+				integer fd, w;
+				reg [15:0] v;
+				fd = $fopen("chip.bin", "wb");
+				for (w = 0; w < 24'h40000; w++) begin v = dut.ram1.rd(w); $fwrite(fd, "%c%c", v[15:8], v[7:0]); end
+				$fclose(fd);
+				$display("wrote chip.bin");
+			end
 			$display("DONE tb_system: %0d fields, F6 accesses %0d, F4 reads %0d writes %0d", field, n_io, n_nvr, n_nvw);
 			$finish;
 		end
