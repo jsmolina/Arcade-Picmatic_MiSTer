@@ -39,8 +39,8 @@ Put the ROMs in `games/mame/marbvice.zip` (or the Kickstart in `kick13.zip`), co
 
     tools/avi2dlv.py Marbella_Vice_-_Picmatic_1994_Laserdisc_PAL_Spanish.avi marbella_vice.dlv
 
-(needs `ffmpeg` and `jpegtran`; about 1.2 GB). Put it in `games/Picmatic/` and mount it with
-*Mount LaserDisc*.
+(needs `ffmpeg` and `jpegtran`; about 1.2 GB). 
+Put the dlv file in `games/marbvice/` and mount it with *Mount LaserDisc*.
 
 ## Controls
 
