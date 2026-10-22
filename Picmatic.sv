@@ -143,7 +143,9 @@ pll_cfg pll_cfg
 	.reconfig_from_pll(reconfig_from_pll)
 );
 
-wire reset = ~locked | buttons[1] | RESET | status[0];
+// status[0] is ignored while a download runs: Main holds it through the whole MRA load, and a
+// minimig in reset drops the host writes uio_boot uses to load the ROMs
+wire reset = ~locked | buttons[1] | RESET | (status[0] & ~ioctl_download);
 
 reg reset_d;
 always @(posedge clk_sys, posedge reset) begin
@@ -155,6 +157,23 @@ always @(posedge clk_sys, posedge reset) begin
 		reset_s <= reset_s << 1;
 		rs <= reset_s[7];
 		reset_d <= rs;
+	end
+end
+
+// SDRAM controller and its arbiter get a power-on reset only. Main_MiSTer holds status[0] (OSD
+// reset) through the whole MRA load (user_io.cpp: status_set("[0]",1) .. arcade_send_rom ..
+// status_set("[0]",0)), and a controller held in reset sits in its init sequence: every ROM write
+// uio_boot makes is dropped and the SDRAM is not refreshed.
+reg reset_mem_d;
+always @(posedge clk_sys, negedge locked) begin
+	reg [7:0] reset_s;
+	reg rs;
+
+	if(~locked) reset_s <= '1;
+	else begin
+		reset_s <= reset_s << 1;
+		rs <= reset_s[7];
+		reset_mem_d <= rs;
 	end
 end
 
@@ -371,7 +390,7 @@ wire [15:0] arb_chip_wr2;
 sdram_ctrl ram1
 (
 	.sysclk       (clk_114         ),
-	.reset_n      (~reset_d        ),
+	.reset_n      (~reset_mem_d    ),
 	.c_7m         (c1              ),
 
 	.cache_rst    (cpu_rst         ),
@@ -414,7 +433,7 @@ sdram_ctrl ram1
 chipdma_arb chipdma_arb
 (
 	.clk             (clk_sys              ),
-	.reset           (reset_d              ),
+	.reset           (reset_mem_d          ),
 	.c_7m            (c1                   ),
 
 	.chip_in_addr    ({1'b0, ram_address}  ),

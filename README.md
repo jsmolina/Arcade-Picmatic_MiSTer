@@ -78,3 +78,30 @@ coin, start and trigger.
 * LDP-1450 on-screen text (user index) is accepted and acknowledged but not drawn.
 * Gun calibration defaults are guesses; the second gun is not wired.
 * Only Marbella Vice has an MRA. Tierras Salvajes and Zorton Brothers use the same board.
+
+## Fix
+**Fix by Jose Luis Rodriguez**
+
+With the original core, the game would fail to start on the MiSTer because the ROM never made it into SDRAM.
+
+When loading an `.mra` file, the MiSTer menu (`Main_MiSTer`) keeps the OSD reset (`status[0]`) asserted throughout the entire loading process. In `Picmatic.sv`, this reset also affected the SDRAM controller (`sdram_ctrl`), its arbiter (`chipdma_arb`), and minimig.
+
+While the ROM was being loaded, the controller was still running through its initialization sequence and discarding all the write operations used by `uio_boot` to copy the ROM. SDRAM was also not being refreshed.
+
+The fix has two parts.
+
+First, the SDRAM controller and its arbiter now use only a power-on reset (triggered when the PLL locks), allowing them to keep running even when the OSD reset is asserted.
+
+Second, the core's main reset ignores `status[0]` while a download is in progress (`ioctl_download`), allowing minimig to accept the ROM writes.
+
+I verified the fix in simulation and then on the actual hardware: the game now loads and waits for coins.
+
+The issue did not show up in my colleague's simulation because their SDRAM model ignored `reset_n`.
+
+**Picmatic.sv**
+
+The only code changes:
+
+- Line 146: `status[0]` becomes `status[0] & ~ioctl_download`.
+- Add a power-on-only reset (`reset_mem_d`).
+- `sdram_ctrl` and `chipdma_arb` use this reset instead of `reset_d`.
