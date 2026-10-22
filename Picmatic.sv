@@ -24,7 +24,7 @@ assign LED_DISK = 0;
 assign LED_POWER = 0;
 
 // O[x] bit map: 1 gun side, 6:3 LD H pos, 10:7 LD V pos, 14:11 gun X adj, 18:15 gun Y adj,
-//               19 crosshair, 22:20 scandoubler fx, 23 audio filter
+//               19 crosshair, 22:20 scandoubler fx, 23 audio filter, 24 debug squares
 `include "build_id.v"
 localparam CONF_STR = {
 	"Picmatic;;",
@@ -39,6 +39,7 @@ localparam CONF_STR = {
 	"O[10:7],Disc V position,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"O[22:20],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"O[23],Audio filter,On,Off;",
+	"O[24],Debug squares,Off,On;",
 	"-;",
 	"R0,Reset;",
 	"J1,Trigger,Holster,Coin,Start,Service;",
@@ -488,8 +489,8 @@ always @(posedge clk_sys) begin
 
 	old_stb <= ps2_mouse[24];
 	if (old_stb != ps2_mouse[24]) begin
-		nx = {1'b0, gun_x} + {{2{ps2_mouse[4]}}, ps2_mouse[15:8]};
-		ny = {1'b0, gun_y} - {{1{ps2_mouse[5]}}, ps2_mouse[23:16]};
+		nx = {1'b0, gun_x} + {{3{ps2_mouse[4]}}, ps2_mouse[15:8]};
+		ny = {1'b0, gun_y} - {{2{ps2_mouse[5]}}, ps2_mouse[23:16]};
 		gun_x <= nx[10] ? 10'd0 : (nx > 767) ? 10'd767 : nx[9:0];
 		gun_y <= ny[9]  ?  9'd0 : (ny > 287) ?  9'd287 : ny[8:0];
 	end
@@ -799,15 +800,37 @@ wire vs_fall = vs_d & ~vs;
 // genlock: Amiga colour 0 shows the disc. ld_valid is pipelined to match Denise's output.
 // Crosshair: a cross at the mouse gun, one disc pixel = two hires pixels.
 wire       xhair  = ~status[19] &&
-                    (((fb_col == gun_x[9:1]) && (fb_row >= gun_y - 4'd6) && (fb_row <= gun_y + 4'd6)) ||
-                     ((fb_row == gun_y) && (fb_col >= gun_x[9:1] - 4'd6) && (fb_col <= gun_x[9:1] + 4'd6)));
+                    (((fb_col == gun_x[9:1]) && (fb_row + 4'd6 >= gun_y) && (fb_row <= gun_y + 4'd6)) ||
+                     ((fb_row == gun_y) && (fb_col + 4'd6 >= gun_x[9:1]) && (fb_col <= gun_x[9:1] + 4'd6)));
 reg  [1:0] xhair_d;
 always @(posedge clk_sys) xhair_d <= {xhair_d[0], xhair};
 
+// Debug overlay (OSD): four squares top left, lit as the boot gets further.
+// red: CPU touched the game ROM, yellow: game set the LD serial rate, cyan: game sent a search, green: disc playing
+reg [2:0] dbg_seen;
+always @(posedge clk_sys) begin
+	if (reset_d) dbg_seen <= 0;
+	else dbg_seen <= dbg_seen | {ld_seek, |pm_serper, chip_addr[23:18] == 6'b111100};
+end
+wire [3:0] dbg_on  = {ld_playing, dbg_seen[2], dbg_seen[1], dbg_seen[0]};
+wire [1:0] dbg_idx = fb_col[5:4];
+wire       dbg_px  = status[24] && fb_row >= 4 && fb_row < 12 && fb_col < 64 && fb_col[3:0] >= 4 && fb_col[3:0] < 12;
+reg  [1:0] dbg_d;
+reg  [1:0] dbg_idx_d0, dbg_idx_d1;
+always @(posedge clk_sys) begin
+	dbg_d      <= {dbg_d[0], dbg_px};
+	dbg_idx_d0 <= dbg_idx;
+	dbg_idx_d1 <= dbg_idx_d0;
+end
+wire [23:0] dbg_rgb = !dbg_on[dbg_idx_d1]  ? 24'h404040 :
+                      dbg_idx_d1 == 0      ? 24'hFF0000 :
+                      dbg_idx_d1 == 1      ? 24'hFFFF00 :
+                      dbg_idx_d1 == 2      ? 24'h00FFFF : 24'h00FF00;
+
 wire       show_ld = zd & ld_valid & ld_video_on;
-wire [7:0] mr = xhair_d[1] ? 8'hFF : show_ld ? ld_r : r;
-wire [7:0] mg = xhair_d[1] ? 8'h00 : show_ld ? ld_g : g;
-wire [7:0] mb = xhair_d[1] ? 8'h00 : show_ld ? ld_b : b;
+wire [7:0] mr = xhair_d[1] ? 8'hFF : dbg_d[1] ? dbg_rgb[23:16] : show_ld ? ld_r : r;
+wire [7:0] mg = xhair_d[1] ? 8'h00 : dbg_d[1] ? dbg_rgb[15:8]  : show_ld ? ld_g : g;
+wire [7:0] mb = xhair_d[1] ? 8'h00 : dbg_d[1] ? dbg_rgb[7:0]   : show_ld ? ld_b : b;
 
 reg ce_out = 0;
 always @(posedge CLK_VIDEO) begin

@@ -30,7 +30,7 @@ localparam [24:0] EXT_START = 25'h80000;
 
 // {cmd, data} pairs sent when the ROM download starts
 localparam NCFG = 7;
-wire [15:0] cfg[NCFG] = '{
+localparam logic [15:0] cfg[NCFG] = '{
 	16'hF1_06, // reset control: CPU halt + CPU reset
 	16'hF3_08, // chipset: ECS, PAL
 	16'hF4_00, // cpu: 68000

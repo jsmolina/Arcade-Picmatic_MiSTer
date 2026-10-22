@@ -2,6 +2,7 @@
 """Build the ioctl index 0 image the MRA produces, for simulation or a manual load.
 
     mkrom.py kick13.rom game_even.bin game_odd.bin out.rom
+    mkrom.py amiga-os-130.rom picmatic_mv_u2.bin picmatic_mv_u1.bin mv.rom   # Marbella Vice: u2 is even
 
 Layout (rtl/uio_boot.sv): Kickstart 1.3 twice (256K each, $F80000/$FC0000), then the game ROM
 with even/odd bytes interleaved ($F00000).

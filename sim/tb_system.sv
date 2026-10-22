@@ -181,4 +181,56 @@ initial begin
 	if (!$value$plusargs("FIELDS=%d", fields_max)) fields_max = 100;
 end
 
+//------------------------------------------------------------------------------
+// Cabinet buttons on joystick 0: +COIN=<field> +START=<field> +TRIG=<field>, each held 5 fields.
+// Logs pm_flag changes and how often the game reads JOY0DAT/JOY1DAT/POTGOR.
+
+integer coin_f = -100, start_f = -100, trig_f = -100;
+initial begin
+	void'($value$plusargs("COIN=%d", coin_f));
+	void'($value$plusargs("START=%d", start_f));
+	void'($value$plusargs("TRIG=%d", trig_f));
+end
+
+always @(posedge clk)
+	dut.hps_io.joystick_0 <= {23'd0, 1'b0,
+	                          field >= start_f && field < start_f + 5,
+	                          field >= coin_f  && field < coin_f  + 5,
+	                          1'b0,
+	                          field >= trig_f  && field < trig_f  + 5,
+	                          4'd0};
+
+// +REGLOG: display register writes (CPU or copper), logged when the value changes
+reg [15:0] reg_last[256];
+initial for (int i = 0; i < 256; i++) reg_last[i] = 16'hDEAD;
+always @(posedge clk) if ($test$plusargs("REGLOG") && dut.clk7_en) begin
+	automatic logic [8:1] ra = dut.minimig.reg_address;
+	automatic logic [15:0] rd = dut.minimig.custom_data_in;
+	if ((ra == 9'h096 >> 1 || ra == 9'h100 >> 1 || ra == 9'h092 >> 1 || ra == 9'h08e >> 1 ||
+	     ra == 9'h080 >> 1 || ra == 9'h082 >> 1 || (ra >= 9'h180 >> 1 && ra <= 9'h186 >> 1)) && reg_last[ra] != rd) begin
+		reg_last[ra] = rd;
+		$display("[%0t] field %0d REG %03h <= %04h", $time, field, {ra, 1'b0}, rd);
+	end
+end
+
+// +DBGSQ: OSD "Debug squares" on
+always @(posedge clk) if ($test$plusargs("DBGSQ")) dut.hps_io.status[24] <= 1;
+
+reg  [9:1] flag_q = 0;
+integer    joy_reads = 0, joy_field = 0;
+always @(posedge clk) begin
+	if (dut.pm_flag != flag_q) begin
+		flag_q <= dut.pm_flag;
+		$display("[%0t] field %0d pm_flag = %09b", $time, field, dut.pm_flag);
+	end
+	if (dut.clk7_en && dut.minimig.pm_joy_sel) joy_reads++;
+	if (field != joy_field) begin
+		joy_field <= field;
+		if (field % 10 == 0) begin
+			$display("[%0t] JOY/POTGO read cycles in last 10 fields: %0d", $time, joy_reads);
+			joy_reads = 0;
+		end
+	end
+end
+
 endmodule

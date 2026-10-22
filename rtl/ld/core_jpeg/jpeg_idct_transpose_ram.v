@@ -73,9 +73,8 @@ end
 
 always @ (posedge clk1_i)
 begin
-    if (wr1_i)
-        ram[addr1_i][31:0] <= data1_i[31:0];
-
+    // port 1 is read-only (wr1_i is 0 at every instance); a second write
+    // process stops Quartus 17 inferring the RAM (Error 10028)
     ram_read1_q <= ram[addr1_i];
 end
 
