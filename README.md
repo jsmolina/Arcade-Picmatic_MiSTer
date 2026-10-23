@@ -1,15 +1,13 @@
 # Picmatic LaserDisc arcade for MiSTer
 
 Picmatic's 1993–1995 Spanish LaserDisc light-gun cabinets (Marbella Vice, Tierras Salvajes, Zorton
-Brothers) were an Amiga 500 genlocked over a Sony LDP-1450 LaserDisc player. This core is that
+Brothers, los Justicieros) were an Amiga 500 genlocked over a Sony LDP-1450 LaserDisc player. This core is that
 cabinet: a cut-down [Minimig-AGA_MiSTer](https://github.com/MiSTer-devel/Minimig-AGA_MiSTer) A500
 plus the LaserDisc video path from
 [Arcade-LaserdiscGames_MiSTer](https://github.com/MiSTer-devel/Arcade-LaserdiscGames_MiSTer), with
 board behaviour taken from WinUAE (`arcadia.cpp`).
 
-Status: **untested on hardware.** The focused simulations pass (see *Simulation*). Full-core
-Verilator lint currently stops on existing mixed blocking/non-blocking assignment errors in
-`rtl/fpga-toccata/toccata.sv` and `rtl/fx68k/fx68k.sv`; this core has not been through Quartus yet.
+Status: only marbella vice is working and tested.
 
 ## What is inside
 
@@ -73,15 +71,7 @@ coin, start and trigger.
 
 `doc/picmatic-plan.md` has the design study; `doc/Minimig-README.md` is the upstream README.
 
-## Known gaps
-
-* Not yet compiled in Quartus, so fit and timing are unknown. `core_jpeg` is upstream's; the
-  LaserDisc core builds a locally tweaked copy (`*_flat` Huffman tables) that may matter for Quartus.
-* LDP-1450 on-screen text (user index) is accepted and acknowledged but not drawn.
-* Gun alignment still needs confirmation on hardware; the second gun is not wired.
-* Only Marbella Vice has an MRA. Tierras Salvajes and Zorton Brothers use the same board.
-
-## Fix
+## Fix list
 **Fix by Jose Luis Rodriguez**
 
 With the original core, the game would fail to start on the MiSTer because the ROM never made it into SDRAM.
