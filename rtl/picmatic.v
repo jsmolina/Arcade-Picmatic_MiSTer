@@ -35,10 +35,10 @@ module picmatic
 
 	// cabinet
 	input       [9:1] flag,
-	input      [11:0] gun_x0,
-	input      [11:0] gun_y0,
-	input      [11:0] gun_x1,
-	input      [11:0] gun_y1,
+	input      [11:0] gun_x,
+	input      [11:0] gun_y,
+	output            gun_valid,
+	output signed [15:0] calibration_x, calibration_y,
 
 	// NVRAM load/save (HPS)
 	input      [11:0] nv_addr,
@@ -75,37 +75,38 @@ dpram #(12,8) nvram
 // $F6 board I/O
 
 wire [3:0] reg_sel = addr[15:12];
-wire [7:0] io_wbyte = hwr ? din[15:8] : din[7:0];
 
-reg [7:0] picmatic_io;
-reg       gun_ply;
+// Both coordinate latches share the one mouse, as in the original core.
+// PAL50 selects which physical gun is sensed using F60000 bit 0.
+// Accept either byte lane; a word write is not a board byte transaction.
+reg [7:0] io_control;
 always @(posedge clk) begin
-	if (reset) begin
-		picmatic_io <= 0;
-		gun_ply <= 0;
-	end
-	else if (sel_io && (hwr || lwr)) begin
-		case (reg_sel)
-			0: picmatic_io <= io_wbyte;
-			5: gun_ply <= 0;
-			6: gun_ply <= 1;
-			default: ;
-		endcase
-	end
+    if (reset) io_control <= 0;
+    else if (clk7_en && sel_io && reg_sel == 0 && (hwr ^ lwr))
+        io_control <= hwr ? din[15:8] : din[7:0];
 end
-
-// WinUAE selects lightpen index 1 - gun_ply. The top level mirrors its single
-// mouse aim into both inputs until a second independent gun is available.
-wire [11:0] selected_gun_x = gun_ply ? gun_x0 : gun_x1;
-wire [11:0] selected_gun_y = gun_ply ? gun_y0 : gun_y1;
+assign gun_valid = io_control[0] ? !flag[9] : !flag[8];
+// Mirror only calibration bytes, on the same writes as the real dual-port SRAM.
+// No reset arm: NVRAM and its mirrors both survive a game reset. HPS restore
+// uses linear nv_addr, CPU bytes use addr[12:1]. Low byte precedes high byte.
+reg [7:0] calibration[0:7];
+integer cal_i;
+initial for (cal_i=0;cal_i<8;cal_i=cal_i+1) calibration[cal_i]=0;
+always @(posedge clk) begin
+    if (sel_nvram && (hwr || lwr) && addr[12:1]<12'd8)
+        calibration[addr[3:1]] <= wbyte;
+    if (nv_we && nv_addr<12'd8) calibration[nv_addr[2:0]] <= nv_din;
+end
+assign calibration_x = io_control[0] ? {calibration[5],calibration[4]} : {calibration[1],calibration[0]};
+assign calibration_y = io_control[0] ? {calibration[7],calibration[6]} : {calibration[3],calibration[2]};
 wire [7:0] btn = ~{flag[8], flag[9], flag[6], flag[7], 4'b0000};
 
 reg [7:0] io_q;
 always @(posedge clk) begin
 	case (reg_sel)
-		0: io_q <= selected_gun_y[7:0];
-		1: io_q <= selected_gun_x[7:0];
-		2: io_q <= {selected_gun_x[11:8], selected_gun_y[11:8]};
+		0: io_q <= gun_y[7:0];
+		1: io_q <= gun_x[7:0];
+		2: io_q <= {gun_x[11:8], gun_y[11:8]};
 		3: io_q <= btn;
 		default: io_q <= 8'h00;
 	endcase

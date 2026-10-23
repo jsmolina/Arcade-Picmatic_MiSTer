@@ -239,51 +239,14 @@ wire        long_cand;
 wire [15:0] cpu_dout_lo_p;
 wire        long_ack;
 
-TG68KdotC_Kernel
-#(
-	.sr_read(2),        // 0=>user,   1=>privileged,    2=>switchable with CPU(0)
-	.vbr_stackframe(2), // 0=>no,     1=>yes/extended,  2=>switchable with CPU(0)
-	.extaddr_mode(2),   // 0=>no,     1=>yes,           2=>switchable with CPU(1)
-	.mul_mode(2),       // 0=>16Bit,  1=>32Bit,         2=>switchable with CPU(1),  3=>no MUL,
-	.div_mode(2),       // 0=>16Bit,  1=>32Bit,         2=>switchable with CPU(1),  3=>no DIV,
-	.bitfield(2)        // 0=>no,     1=>yes,           2=>switchable with CPU(1)
-)
-cpu_inst_p
-(
-  .clk(clk),
-  .nreset(reset),
-  .clkena_in(clkena_p_throttled),
-  .data_in(cpu_din),
-  .ipl(cpu_ipl),
-  .ipl_autovector(1),
-  .regin_out(),
-  .addr_out(cpu_addr_p),
-  .data_write(cpu_dout_p),
-  .nwr(wr_p),
-  .nuds(uds_p),
-  .nlds(lds_p),
-  .nresetout(reset_out_p),
-  .longword(longword),
-  .s21_en(s21_en),
-  .long_cand(long_cand),
-  .long_ack(long_ack),
-  .data_in_hi(ramdout_hi),
-  .data_write_lo(cpu_dout_lo_p),
-  
-  .cpu({cpucfg[1], cpucfg[1] | cpucfg[0]}),
-  .cpu030(cpu030),
-  .opc_start(opc_start),
-  .opc_out(opc_out),
-  .opc_cond(opc_cond),
-  .opc_snd(opc_snd),
-  .opc_dbx(opc_dbx),
-  .opc_cacr(cacr_x),
-  .mmu_busy(mmu_busy),
-  .busstate(cpustate_p),		// 0: fetch code, 1: no memaccess, 2: read data, 3: write data
-  .cacr_out(cacr_p),
-  .d_cache_out(),
-  .vbr_out(vbr_p)
-);
+// Picmatic is a stock 68000. Do not elaborate TG68K/020/030/MMU.
+assign cpu_addr_p=0; assign cpu_dout_p=0; assign wr_p=1;
+assign uds_p=1; assign lds_p=1; assign reset_out_p=1;
+assign longword=0; assign long_cand=0; assign cpu_dout_lo_p=0;
+assign opc_start=0; assign opc_out=0; assign opc_cond=0;
+assign opc_snd=0; assign opc_dbx=0; assign cacr_x=0; assign mmu_busy=0;
+assign cpustate_p=2'b01; assign cacr_p=0; assign vbr_p=0;
+
 
 wire [15:0] cpu_dout_o;
 wire [23:1] cpu_addr_o;

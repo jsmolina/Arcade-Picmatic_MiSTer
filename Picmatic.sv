@@ -44,7 +44,7 @@ localparam CONF_STR = {
 	"R0,Reset;",
 	"J1,Trigger,Holster,Coin,Start,Service;",
 	"jn,A,B,Select,Start,X;",
-	"V,v",`BUILD_DATE
+	"V,v",`BUILD_DATE," JSM-LP3"
 };
 
 ////////////////////////////  HPS  ////////////////////////////////////
@@ -498,22 +498,26 @@ wire [4:0] p_r   = side ? p_me  : p_oth;
 // WinUAE alg_flag bits 9..1: rholster lholster rtrig ltrig rcoin lcoin rstart lstart service
 wire [9:1] pm_flag = {p_r[1], p_l[1], p_r[0], p_l[0], p_r[2], p_l[2], p_r[3], p_l[3], p_l[4] | p_r[4]};
 
-wire [9:0] gun_x;
-wire [8:0] gun_y;
-wire [11:0] gun_x_reg;
-wire [11:0] gun_y_reg;
+// mouse gun: hires pixels across the disc picture, lines down it
+reg  [9:0] gun_x = 384;
+reg  [8:0] gun_y = 144;
+always @(posedge clk_sys) begin
+	reg old_stb;
+	reg [10:0] nx;
+	reg [10:0] ny;
 
-picmatic_gun picmatic_gun
-(
-	.clk(clk_sys),
-	.ps2_mouse(ps2_mouse),
-	.x_adjust(status[14:11]),
-	.y_adjust(status[18:15]),
-	.picture_x(gun_x),
-	.picture_y(gun_y),
-	.gun_x(gun_x_reg),
-	.gun_y(gun_y_reg)
-);
+	old_stb <= ps2_mouse[24];
+	if (old_stb != ps2_mouse[24]) begin
+		nx = {1'b0, gun_x} + {{3{ps2_mouse[4]}}, ps2_mouse[15:8]};
+		ny = {2'b00, gun_y} - {{3{ps2_mouse[5]}}, ps2_mouse[23:16]};
+		gun_x <= nx[10] ? 10'd0 : (nx > 767) ? 10'd767 : nx[9:0];
+		gun_y <= ny[10]  ?  9'd0 : (ny > 287) ?  9'd287 : ny[8:0];
+	end
+end
+
+// gun registers: picture position plus the calibration knobs
+wire [11:0] gun_x_reg = {2'b00, gun_x} + {{6{status[14]}}, status[14:11], 2'b00};
+wire [11:0] gun_y_reg = {3'b000, gun_y} + {{7{status[18]}}, status[18:15], 1'b0};
 
 ////////////////////////////  LASERDISC  ////////////////////////////////////
 
@@ -544,10 +548,23 @@ ld_player ld_player
 wire signed [15:0] ld_pcm_l, ld_pcm_r;
 wire  [8:0] fb_col;
 wire  [9:0] fb_row;
+// Trigger at the aimed disc pixel; encode the virtual sensor readback
+// through the PAL50 ROM/NVRAM/viewport mapping in picmatic_pal_aim.
+// Live DMA/sync counters remain untouched. Reject wrapped adjustments.
+wire pm_gun_pulse = pm_sensor_valid && gun_x_reg < 12'd768 && gun_y_reg < 12'd288 &&
+                    fb_col < 9'd384 && fb_row < 10'd288 &&
+                    fb_col == gun_x_reg[9:1] && fb_row == gun_y_reg[9:0];
 wire  [7:0] ld_r, ld_g, ld_b;
 wire        ld_valid;
 
 // framebuffer column 0 / row 0 relative to the Amiga hsync / vsync, plus the OSD knobs
+wire signed [15:0] pm_calibration_x,pm_calibration_y;
+wire [7:0] pm_sensor_h;
+wire [10:0] pm_sensor_v;
+wire pm_sensor_valid;
+picmatic_pal_aim aim (.gun_x(gun_x_reg),.gun_y(gun_y_reg),
+    .calibration_x(pm_calibration_x),.calibration_y(pm_calibration_y),
+    .h_off(ld_h_off),.v_off(ld_v_off),.sensor_h(pm_sensor_h),.sensor_v(pm_sensor_v),.valid(pm_sensor_valid));
 wire  [8:0] ld_h_off = 9'd66 + {{5{status[6]}}, status[6:3]};
 wire  [8:0] ld_v_off = 9'd20 + {{5{status[10]}}, status[10:7]};
 
@@ -761,6 +778,9 @@ minimig minimig
 	.pm_flag      (pm_flag          ),
 	.pm_gun_x     (gun_x_reg        ),
 	.pm_gun_y     (gun_y_reg        ),
+	.pm_gun_pulse (pm_gun_pulse      ),
+	.pm_gun_h(pm_sensor_h),.pm_gun_v(pm_sensor_v),
+	.pm_calibration_x(pm_calibration_x),.pm_calibration_y(pm_calibration_y),
 	.pm_serper    (pm_serper        ),
 	.pm_nv_addr   (ioctl_addr[11:0] ),
 	.pm_nv_din    (ioctl_dout       ),

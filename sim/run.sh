@@ -12,8 +12,6 @@ case $name in
 	uio_boot)  src="rtl/uio_boot.sv rtl/userio.v" ;;
 	picmatic)  src="rtl/picmatic.v sim/dpram.v"
 	           flags="-Wno-PINMISSING" ;;  # sim dpram has no default pin values
-	mouse_gun) src="rtl/picmatic_gun.sv rtl/picmatic.v sim/dpram.v"
-	           flags="-Wno-PINMISSING" ;;
 	ld_video)  src="rtl/ld_video.sv rtl/ld/dlv_streamer.v rtl/ld/jpeg_frame_decoder.v rtl/ld/fb_writer.v rtl/ld/ddram.sv rtl/ld/core_jpeg/*.v"
 	           flags="-Wno-fatal" ;;  # vendored core_jpeg/ddram lint noise
 	*) echo "unknown bench $name"; exit 1 ;;

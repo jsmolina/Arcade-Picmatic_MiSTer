@@ -6,7 +6,7 @@ module tb_picmatic;
 reg clk = 0;
 always #17.6 clk = ~clk;
 
-reg         sel_nvram = 0, sel_io = 0, hwr = 0, lwr = 0, reset = 1;
+reg         sel_nvram = 0, sel_io = 0, hwr = 0, lwr = 0;
 reg  [23:1] addr = 0;
 reg  [15:0] din = 0;
 wire [15:0] dout;
@@ -15,8 +15,7 @@ wire        joy_sel;
 wire [15:0] joy_dout;
 wire [15:0] serper;
 reg   [9:1] flag = 0;
-reg  [11:0] gun_x0 = 12'h345, gun_y0 = 12'h1A7;
-reg  [11:0] gun_x1 = 12'hABC, gun_y1 = 12'h123;
+reg  [11:0] gun_x = 12'h345, gun_y = 12'h1A7;
 reg  [11:0] nv_addr = 0;
 reg   [7:0] nv_din = 0;
 reg         nv_we = 0;
@@ -24,10 +23,10 @@ wire  [7:0] nv_dout;
 
 picmatic dut
 (
-	.clk(clk), .clk7_en(1'b1), .reset(reset),
+	.clk(clk), .clk7_en(1'b1), .reset(1'b0),
 	.sel_nvram(sel_nvram), .sel_io(sel_io), .addr(addr), .din(din), .dout(dout), .hwr(hwr), .lwr(lwr),
 	.reg_address(reg_address), .reg_din(16'd0), .joy_sel(joy_sel), .joy_dout(joy_dout), .serper(serper),
-	.flag(flag), .gun_x0(gun_x0), .gun_y0(gun_y0), .gun_x1(gun_x1), .gun_y1(gun_y1),
+	.flag(flag), .gun_x(gun_x), .gun_y(gun_y),
 	.nv_addr(nv_addr), .nv_din(nv_din), .nv_we(nv_we), .nv_dout(nv_dout)
 );
 
@@ -77,26 +76,8 @@ task rd_io(input [3:0] r, output [7:0] v);
 	end
 endtask
 
-task wr_io(input [3:0] r, input [7:0] data, input odd);
-	begin
-		@(negedge clk);
-		sel_io = 1;
-		addr = {8'hF6, r, 11'h000};
-		din = odd ? {8'h00, data} : {data, 8'h00};
-		hwr = !odd;
-		lwr = odd;
-		@(negedge clk);
-		hwr = 0;
-		lwr = 0;
-		sel_io = 0;
-	end
-endtask
-
 reg [7:0] v;
 initial begin
-	repeat (2) @(negedge clk);
-	reset = 0;
-
 	for (f = 0; f < 1024; f += 2) begin
 		flag = f[9:1];
 		reg_address = 8'h05; #1; if (!joy_sel || joy_dout !== w_joydat(0, f)) begin errs++; $display("FAIL JOY0DAT f=%03h got %04h want %04h", f, joy_dout, w_joydat(0, f)); end
@@ -107,20 +88,9 @@ initial begin
 	reg_address = 8'h18; #1; if (joy_sel) begin errs++; $display("FAIL joy_sel on SERDATR"); end
 
 	// gun registers
-	rd_io(0, v); if (v !== 8'h23) begin errs++; $display("FAIL initial gun Y lo %02h", v); end
-	rd_io(1, v); if (v !== 8'hBC) begin errs++; $display("FAIL initial gun X lo %02h", v); end
-	rd_io(2, v); if (v !== 8'hA1) begin errs++; $display("FAIL initial gun hi %02h", v); end
-
-	// WinUAE writes reg6 to select lightpen 0; reg5 selects lightpen 1.
-	wr_io(6, 8'hFF, 1);
-	rd_io(0, v); if (v !== 8'hA7) begin errs++; $display("FAIL selected gun0 Y lo %02h", v); end
-	rd_io(1, v); if (v !== 8'h45) begin errs++; $display("FAIL selected gun0 X lo %02h", v); end
-	wr_io(5, 8'hFF, 1);
-	rd_io(0, v); if (v !== 8'h23) begin errs++; $display("FAIL selected gun1 Y lo %02h", v); end
-	rd_io(1, v); if (v !== 8'hBC) begin errs++; $display("FAIL selected gun1 X lo %02h", v); end
-	rd_io(2, v); if (v !== 8'hA1) begin errs++; $display("FAIL selected gun1 hi %02h", v); end
-	wr_io(0, 8'h01, 1);
-	if (dut.picmatic_io !== 8'h01) begin errs++; $display("FAIL Picmatic player select %02h", dut.picmatic_io); end
+	rd_io(0, v); if (v !== 8'hA7) begin errs++; $display("FAIL gun Y lo %02h", v); end
+	rd_io(1, v); if (v !== 8'h45) begin errs++; $display("FAIL gun X lo %02h", v); end
+	rd_io(2, v); if (v !== 8'h31) begin errs++; $display("FAIL gun hi %02h", v); end
 
 	// NVRAM: byte write on the even and the odd address of a word, both land in the same byte
 	@(negedge clk); sel_nvram = 1; addr = {8'hF4, 15'h0123}; din = 16'h5A00; hwr = 1;

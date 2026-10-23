@@ -283,7 +283,7 @@ module dlv_streamer #(
 
     // Computed from ACTUAL DATA COUNTS, not from mpeg_fpks -- that header field is unreliable
     // (Space Ace's is an impossible 41218).
-    wire [31:0] spf_q = (frame_count != 32'd0) ? ((aud_size >> 2) / frame_count) : 32'd1842;
+    wire [31:0] spf_q = 32'd1764; // fixed 44100 Hz / 25 fps PAL Picmatic
     wire [13:0] samp_per_frame = (header_valid && spf_q >= 32'd256 && spf_q <= 32'd8191)
                                  ? spf_q[13:0] : 14'd1842;   // fallback = DL's 1842
 

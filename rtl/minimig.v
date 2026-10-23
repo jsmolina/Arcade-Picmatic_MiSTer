@@ -264,6 +264,10 @@ module minimig
 	input   [9:1] pm_flag,     // cabinet buttons, WinUAE alg_flag bit numbers
 	input  [11:0] pm_gun_x,
 	input  [11:0] pm_gun_y,
+	input         pm_gun_pulse,
+	input [7:0] pm_gun_h,
+	input [10:0] pm_gun_v,
+	output signed [15:0] pm_calibration_x, pm_calibration_y,
 	output [15:0] pm_serper,   // Paula SERPER, for the LaserDisc UART
 	input  [11:0] pm_nv_addr,
 	input   [7:0] pm_nv_din,
@@ -402,6 +406,7 @@ wire        sel_picmatic_nvram;
 wire        sel_picmatic_io;
 wire        sel_picmatic = sel_picmatic_nvram | sel_picmatic_io;
 wire [15:0] pm_dout;
+wire pm_gun_valid;
 wire        pm_joy_sel;
 wire [15:0] pm_joy_dout;
 wire [15:0] cdtv_bridge_dout;
@@ -587,6 +592,8 @@ agnus AGNUS1
 	.ecs(|chipset_config[4:3]),
 	.aga(chipset_config[4]),
 	.genlock(picmatic),
+	.lpen_strobe(picmatic && pm_gun_pulse && pm_gun_valid),
+	.lpen_h_input(pm_gun_h),.lpen_v_input(pm_gun_v),
 	.floppy_speed(floppy_speed)
 );
 
@@ -729,8 +736,8 @@ denise DENISE1
 	.green(green),
 	.blue(blue),
 	.a1k(chipset_config[2]),
-	.ecs(|chipset_config[4:3]),
-	.aga(chipset_config[4]),
+	.ecs(1'b0),
+	.aga(1'b0),
 	.hires(hires),
 	.shres(shres),
 	.zd(zd)
@@ -877,29 +884,9 @@ minimig_sram_bridge RAM1
 	.ramdata_in(ramdata_in)	
 );
 
-cart CART1
-(
-  .clk(clk),
-  .clk7_en(clk7_en),
-  .clk7n_en(clk7n_en),
-  .cpu_rst(!_cpu_reset),
-  .cpu_address_in(cpu_address_out),
-  ._cpu_as(_cpu_as),
-  .cpu_rd(cpu_rd),
-  .cpu_hwr(cpu_hwr),
-  .cpu_lwr(cpu_lwr),
-  .nmi_addr(nmi_addr),
-  .reg_address_in(reg_address),
-  .reg_data_in(custom_data_in),
-  .dbr(dbr),
-  .ovl(ovl),
-  .freeze(freeze),
-  .cart_data_out(cart_data_out),
-  .int7(int7),
-  .sel_cart(sel_cart),
-  .ovr(ovr),
-  .cpuhlt(cpuhlt)
-);
+// Picmatic: unused amiga_cart removed.
+assign cart_data_out=0; assign int7=0; assign sel_cart=0; assign ovr=0;
+
 
 //level 7 interrupt for CPU
 assign _cpu_ipl = int7 ? 3'b000 : _iplx;	//m68k interrupt request
@@ -964,29 +951,9 @@ gary GARY1
 	.bootrom(bootrom)
 );
 
-gayle GAYLE1
-(
-	.clk(clk),
-	.reset(reset),
-	.addr(cpu_address_out),
-	.data_in(cpu_data_out),
-	.data_out(gayle_data_out),
-	.rd(cpu_rd),
-	.wr(cpu_hwr),
-	.sel_ide(sel_ide),
-	.sel_gayle(sel_gayle),
-	.irq(gayle_irq),
-	.nrdy(gayle_nrdy),
+// Picmatic: unused amiga_ide removed.
+assign gayle_data_out=0; assign gayle_irq=0; assign gayle_nrdy=0; assign ide_req=0; assign ide_readdata=0; assign hdd_led=0;
 
-	.ide_req(ide_req),
-	.ide_address(ide_address),
-	.ide_write(ide_write),
-	.ide_writedata(ide_writedata),
-	.ide_read(ide_read),
-	.ide_readdata(ide_readdata),
-
-	.led(hdd_led)
-);
 
 //instantiate system control
 minimig_syscontrol CONTROL1 
@@ -1029,23 +996,9 @@ end
 // Toccata soundcard
 
 wire [15:0] toccata_out;
-toccata #(
-  .CLK_FREQUENCY(28_359_380)
-) toccata_board (
-	.clk(clk),
-	.rst(reset),
-	.hsync(_hsync),
-	.data_in(cpu_data_out),
-	.data_out(toccata_out),
-	.addr(cpu_address_out[15:1]),
-	.rd(cpu_rd),
-	.hwr(cpu_hwr),
-	.lwr(cpu_lwr),
-	.sel(sel_toccata),
-	.toc_int(int6_toccata),
-	.out_left(toccata_aud_left),
-	.out_right(toccata_aud_right)
-);
+// Picmatic: unused amiga_toccata removed.
+assign toccata_out=0; assign int6_toccata=0; assign toccata_aud_left=0; assign toccata_aud_right=0;
+
 
 //-------------------------------------------------------------------------------------
 // A2065 Ethernet card. Everything the card needs is inside this module; the
@@ -1054,142 +1007,24 @@ toccata #(
 wire [15:0] a2065_dout;
 wire        a2065_nrdy;
 
-a2065 a2065_inst (
-	.clk_sys          (clk),
-	.rst_n_sys        (~reset),
+// Picmatic: unused amiga_ethernet removed.
+assign a2065_dout=0; assign a2065_nrdy=0; assign a2065_int2_sync=0; assign a2065_mem_address=0; assign a2065_mem_burstcount=0; assign a2065_mem_read=0; assign a2065_mem_write=0; assign a2065_mem_writedata=0; assign a2065_mem_byteenable=0;
 
-	.cpu_addr         (cpu_address_out[23:1]),
-	.cpu_data_in      (cpu_data_out),
-	.cpu_data_out     (a2065_dout),
-	.cpu_rw           (cpu_r_w),
-	.cpu_as_n         (_cpu_as),
-	.cpu_uds_n        (_cpu_uds),
-	.cpu_lds_n        (_cpu_lds),
-	.sel              (sel_a2065),
-	.nrdy             (a2065_nrdy),
-	.int2             (a2065_int2_sync),
-
-	.card_base        (a2065_base),
-	.card_configured  (a2065_ena),
-
-	.clk_ddr          (a2065_clk_ddr),
-	.mem_address      (a2065_mem_address),
-	.mem_burstcount   (a2065_mem_burstcount),
-	.mem_read         (a2065_mem_read),
-	.mem_readdata     (a2065_mem_readdata),
-	.mem_readdatavalid(a2065_mem_readdatavalid),
-	.mem_writedata    (a2065_mem_writedata),
-	.mem_byteenable   (a2065_mem_byteenable),
-	.mem_write        (a2065_mem_write),
-	.mem_waitrequest  (a2065_mem_waitrequest)
-);
 
 //
 //-------------------------------------------------------------------------------------
 
-cdtv_bridge cdtv_bridge_inst
-(
-	.clk             (clk                  ),
-	.reset           (reset                ),
-
-	.sel             (sel_cdtv             ),
-	.selack          (cdtv_bridge_selack   ),
-	.addr            (cpu_address_out      ),
-	.din             (cpu_data_out         ),
-	.dout            (cdtv_bridge_dout     ),
-	.rd              (cpu_rd               ),
-	.hwr             (cpu_hwr              ),
-	.lwr             (cpu_lwr              ),
+// Picmatic: unused amiga_cdtv removed.
+assign cdtv_bridge_dout=0; assign cdtv_bridge_selack=0; assign cdtv_irq_w=0; assign cdtv_req=0; assign cdtv_uio_dout=0; assign cdtv_dma_req=0; assign cdtv_dma_we=0; assign cdtv_dma_baddr=0; assign cdtv_dma_wbyte=0; assign cdtv_cdda_volume=0; assign cdtv_cdda_volume_valid=0;
 
 
-	.cdtv_irq        (cdtv_irq_w           ),
-	.cdda_volume     (cdtv_cdda_volume     ),
-	.cdda_volume_valid(cdtv_cdda_volume_valid),
+// Picmatic: unused amiga_cd_nvram removed.
+assign cdtv_nvr_dout=0; assign cdtv_nvr_save_dout=0; assign cdtv_nvr_dirty=0;
 
-	.uio_cs          (cdtv_cs              ),
-	.uio_cs_sec      (cdtv_cs_sec          ),
-	.uio_cs_stch     (cdtv_cs_stch         ),
-	.uio_cs_nvr      (cdtv_cs_nvr          ),
-	.uio_cs_card     (cdtv_cs_card         ),
-	.uio_wr          (cdtv_wr              ),
-	.uio_rd          (cdtv_rd              ),
-	.uio_din         (cdtv_uio_din         ),
-	.uio_dout        (cdtv_uio_dout        ),
-	.uio_req         (cdtv_req             ),
 
-	.nvr_addr        (cdtv_nvr_addr        ),
-	.nvr_dout        (cdtv_nvr_save_dout   ),
-	.nvr_load_din    (cdtv_nvr_load_din    ),
-	.nvr_load_we     (cdtv_nvr_load_we     ),
-	.nvr_clear_dirty (cdtv_nvr_clear_dirty ),
+// Picmatic: unused amiga_cd_card removed.
+assign cdtv_card_dout=0; assign cdtv_card_save_dout=0; assign cdtv_card_dirty=0;
 
-	.card_addr        (cdtv_card_addr       ),
-	.card_dout        (cdtv_card_save_dout  ),
-	.card_load_din    (cdtv_card_load_din   ),
-	.card_load_we     (cdtv_card_load_we    ),
-	.card_clear_dirty (cdtv_card_clear_dirty),
-
-	.subq_push       (cdtv_subq_push       ),
-	.subq_byte       (cdtv_subq_byte       ),
-
-	.sten_pulse_ext  (cdtv_sten_pulse      ),
-	.scor_pulse      (cdtv_scor_pulse      ),
-	.sbcp_pulse      (cdtv_sbcp_pulse      ),
-
-	.cdtv_dma_req    (cdtv_dma_req         ),
-	.cdtv_dma_we     (cdtv_dma_we          ),
-	.cdtv_dma_baddr  (cdtv_dma_baddr       ),
-	.cdtv_dma_wbyte  (cdtv_dma_wbyte       ),
-	.cdtv_dma_ack    (cdtv_dma_ack         )
-);
-
-cdtv_nvram cdtv_nvram_inst
-(
-	.clk             (clk                  ),
-	.reset           (reset                ),
-
-	.sel             (sel_cdtv_nvram       ),
-	.addr            (cpu_address_out      ),
-	.din             (cpu_data_out         ),
-	.dout            (cdtv_nvr_dout        ),
-	.rd              (cpu_rd               ),
-	.hwr             (cpu_hwr              ),
-	.lwr             (cpu_lwr              ),
-
-	.hps_load_addr   (cdtv_nvr_addr        ),
-	.hps_load_din    (cdtv_nvr_load_din    ),
-	.hps_load_we     (cdtv_nvr_load_we     ),
-
-	.hps_save_addr   (cdtv_nvr_addr        ),
-	.hps_save_dout   (cdtv_nvr_save_dout   ),
-
-	.dirty           (cdtv_nvr_dirty       ),
-	.clear_dirty     (cdtv_nvr_clear_dirty )
-);
-
-cdtv_nvram #(.ADDR_W(13)) cdtv_card_inst
-(
-	.clk             (clk                   ),
-	.reset           (reset                 ),
-
-	.sel             (sel_cdtv_card         ),
-	.addr            (cpu_address_out       ),
-	.din             (cpu_data_out          ),
-	.dout            (cdtv_card_dout        ),
-	.rd              (cpu_rd                ),
-	.hwr             (cpu_hwr               ),
-	.lwr             (cpu_lwr               ),
-
-	.hps_load_addr   (cdtv_card_addr        ),
-	.hps_load_din    (cdtv_card_load_din    ),
-	.hps_load_we     (cdtv_card_load_we     ),
-
-	.hps_save_addr   (cdtv_card_addr        ),
-	.hps_save_dout   (cdtv_card_save_dout   ),
-
-	.dirty           (cdtv_card_dirty       ),
-	.clear_dirty     (cdtv_card_clear_dirty )
-);
 
 assign cdtv_din    = sel_picmatic ? pm_dout : sel_cdtv_nvram ? cdtv_nvr_dout : sel_cdtv_card ? cdtv_card_dout : cdtv_bridge_dout;
 assign cdtv_selack = cdtv_bridge_selack | sel_cdtv_nvram | sel_cdtv_card | sel_picmatic;
@@ -1215,10 +1050,10 @@ picmatic picmatic_inst
 	.serper      (pm_serper            ),
 
 	.flag        (pm_flag              ),
-	.gun_x0      (pm_gun_x             ),
-	.gun_y0      (pm_gun_y             ),
-	.gun_x1      (pm_gun_x             ),
-	.gun_y1      (pm_gun_y             ),
+	.gun_x       (pm_gun_x             ),
+	.gun_y       (pm_gun_y             ),
+	.gun_valid   (pm_gun_valid         ),
+	.calibration_x(pm_calibration_x),.calibration_y(pm_calibration_y),
 
 	.nv_addr     (pm_nv_addr           ),
 	.nv_din      (pm_nv_din            ),
@@ -1259,3 +1094,4 @@ assign rst_out = reset;
 
 
 endmodule
+

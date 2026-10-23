@@ -5,6 +5,7 @@ reg clk = 0;
 always #5 clk = ~clk;
 
 reg [24:0] ps2_mouse = 0;
+reg [15:0] joystick_analog = 0;
 reg [3:0] x_adjust = 0;
 reg [3:0] y_adjust = 0;
 wire [9:0] picture_x;
@@ -24,6 +25,7 @@ picmatic_gun dut
 (
 	.clk(clk),
 	.ps2_mouse(ps2_mouse),
+	.joystick_analog(joystick_analog),
 	.x_adjust(x_adjust),
 	.y_adjust(y_adjust),
 	.picture_x(picture_x),
@@ -114,16 +116,16 @@ initial begin
 	ps2_mouse[0] = 0;
 	check_board_trigger(8'hFF);
 
-	// Mouse motion changes cursor and the game latch by the same framebuffer amount.
+	// WinUAE reports horizontal lightpen position in hires units: each lores X step is two.
 	mouse_packet(8'd20, 0, 8'd10, 0);
-	check_gun(12'd404, 12'd134);
+	check_gun(12'd424, 12'd134);
 	check_target_alignment();
 	check_board_coordinates();
 
 	// Verify the OSD calibration uses signed quarter-/half-steps as advertised.
 	x_adjust = 4'd8;  // -32
 	y_adjust = 4'd8;  // -16
-	check_gun(12'd372, 12'd118);
+	check_gun(12'd392, 12'd118);
 	check_board_coordinates();
 
 	// Both lower and upper mouse bounds clamp instead of wrapping.
@@ -133,6 +135,20 @@ initial begin
 	check_gun(12'd0, 12'd0);
 	repeat (7) mouse_packet(8'd127, 0, 8'd128, 1);
 	check_gun(12'd767, 12'd287);
+
+	// MiSTer Main calibrated lightguns arrive as signed absolute analog axes.
+	joystick_analog = {8'h81, 8'h81}; // (-127,-127) -> top left
+	@(negedge clk);
+	check_gun(12'd0, 12'd0);
+	check_board_coordinates();
+	joystick_analog = {8'h7F, 8'h7F}; // (+127,+127) -> bottom right
+	@(negedge clk);
+	check_gun(12'd767, 12'd287);
+	check_board_coordinates();
+	joystick_analog = 16'h0000; // center -> center
+	@(negedge clk);
+	check_gun(12'd384, 12'd144);
+	check_board_coordinates();
 
 	$display("PASS tb_mouse_gun");
 	$finish;
