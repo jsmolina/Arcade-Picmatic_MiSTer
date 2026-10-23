@@ -93,12 +93,48 @@ localparam logic [7:0] chroma_SIN_LUT[64] = '{
 	236, 238, 241, 243, 244, 246, 248, 249, 250, 251, 252, 253, 254, 254, 255, 255
 };
 
+// Expand the original quarter-wave coefficients at elaboration time. This
+// removes the run-time mirrored address and signed negation from the lookup
+// path at the 114 MHz video clock; every one of the 256 results is identical.
+localparam logic signed [10:0] chroma_FULL_LUT[256] = '{
+	11'sd0, 11'sd6, 11'sd13, 11'sd19, 11'sd25, 11'sd31, 11'sd38, 11'sd44,
+	11'sd50, 11'sd56, 11'sd62, 11'sd68, 11'sd74, 11'sd80, 11'sd86, 11'sd92,
+	11'sd98, 11'sd104, 11'sd109, 11'sd115, 11'sd121, 11'sd126, 11'sd132, 11'sd137,
+	11'sd142, 11'sd147, 11'sd152, 11'sd157, 11'sd162, 11'sd167, 11'sd172, 11'sd176,
+	11'sd181, 11'sd185, 11'sd190, 11'sd194, 11'sd198, 11'sd202, 11'sd205, 11'sd209,
+	11'sd213, 11'sd216, 11'sd219, 11'sd222, 11'sd225, 11'sd228, 11'sd231, 11'sd234,
+	11'sd236, 11'sd238, 11'sd241, 11'sd243, 11'sd244, 11'sd246, 11'sd248, 11'sd249,
+	11'sd250, 11'sd251, 11'sd252, 11'sd253, 11'sd254, 11'sd254, 11'sd255, 11'sd255,
+	11'sd255, 11'sd255, 11'sd254, 11'sd254, 11'sd253, 11'sd252, 11'sd251, 11'sd250,
+	11'sd249, 11'sd248, 11'sd246, 11'sd244, 11'sd243, 11'sd241, 11'sd238, 11'sd236,
+	11'sd234, 11'sd231, 11'sd228, 11'sd225, 11'sd222, 11'sd219, 11'sd216, 11'sd213,
+	11'sd209, 11'sd205, 11'sd202, 11'sd198, 11'sd194, 11'sd190, 11'sd185, 11'sd181,
+	11'sd176, 11'sd172, 11'sd167, 11'sd162, 11'sd157, 11'sd152, 11'sd147, 11'sd142,
+	11'sd137, 11'sd132, 11'sd126, 11'sd121, 11'sd115, 11'sd109, 11'sd104, 11'sd98,
+	11'sd92, 11'sd86, 11'sd80, 11'sd74, 11'sd68, 11'sd62, 11'sd56, 11'sd50,
+	11'sd44, 11'sd38, 11'sd31, 11'sd25, 11'sd19, 11'sd13, 11'sd6, 11'sd0,
+	11'sd0, -11'sd6, -11'sd13, -11'sd19, -11'sd25, -11'sd31, -11'sd38, -11'sd44,
+	-11'sd50, -11'sd56, -11'sd62, -11'sd68, -11'sd74, -11'sd80, -11'sd86, -11'sd92,
+	-11'sd98, -11'sd104, -11'sd109, -11'sd115, -11'sd121, -11'sd126, -11'sd132, -11'sd137,
+	-11'sd142, -11'sd147, -11'sd152, -11'sd157, -11'sd162, -11'sd167, -11'sd172, -11'sd176,
+	-11'sd181, -11'sd185, -11'sd190, -11'sd194, -11'sd198, -11'sd202, -11'sd205, -11'sd209,
+	-11'sd213, -11'sd216, -11'sd219, -11'sd222, -11'sd225, -11'sd228, -11'sd231, -11'sd234,
+	-11'sd236, -11'sd238, -11'sd241, -11'sd243, -11'sd244, -11'sd246, -11'sd248, -11'sd249,
+	-11'sd250, -11'sd251, -11'sd252, -11'sd253, -11'sd254, -11'sd254, -11'sd255, -11'sd255,
+	-11'sd255, -11'sd255, -11'sd254, -11'sd254, -11'sd253, -11'sd252, -11'sd251, -11'sd250,
+	-11'sd249, -11'sd248, -11'sd246, -11'sd244, -11'sd243, -11'sd241, -11'sd238, -11'sd236,
+	-11'sd234, -11'sd231, -11'sd228, -11'sd225, -11'sd222, -11'sd219, -11'sd216, -11'sd213,
+	-11'sd209, -11'sd205, -11'sd202, -11'sd198, -11'sd194, -11'sd190, -11'sd185, -11'sd181,
+	-11'sd176, -11'sd172, -11'sd167, -11'sd162, -11'sd157, -11'sd152, -11'sd147, -11'sd142,
+	-11'sd137, -11'sd132, -11'sd126, -11'sd121, -11'sd115, -11'sd109, -11'sd104, -11'sd98,
+	-11'sd92, -11'sd86, -11'sd80, -11'sd74, -11'sd68, -11'sd62, -11'sd56, -11'sd50,
+	-11'sd44, -11'sd38, -11'sd31, -11'sd25, -11'sd19, -11'sd13, -11'sd6, 11'sd0
+};
+
 function automatic signed [10:0] chroma_sin;
 	input [7:0] idx;
-	logic signed [10:0] lut_data;
 begin
-	lut_data   = {3'b000, chroma_SIN_LUT[idx[6] ? ~idx[5:0] : idx[5:0]]};
-	chroma_sin = idx[7] ? -lut_data : lut_data;
+	chroma_sin = chroma_FULL_LUT[idx];
 end
 endfunction
 

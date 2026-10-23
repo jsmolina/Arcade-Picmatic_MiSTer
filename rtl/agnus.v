@@ -99,6 +99,9 @@ module agnus
 	input         a1k,             // enable A1000 OCS features
 	input         ecs,             // enable ECS features
 	input         aga,             // enables AGA features
+	input [7:0] lpen_h_input,
+	input [10:0] lpen_v_input,
+	input         lpen_strobe,     // virtual light sensor at the displayed gun pixel
 	input         genlock,         // a genlock supplies sync (Picmatic): ERSY keeps the internal beam
 	input         floppy_speed     // allocates refresh slots for disk DMA
 );
@@ -477,6 +480,8 @@ agnus_beamcounter  bc1
 	.ntsc(ntsc),
 	.aga(aga),
 	.genlock(genlock),
+	.lpen_strobe(lpen_strobe),
+	.lpen_h_input(lpen_h_input),.lpen_v_input(lpen_v_input),
 	.ecs(ecs),
 	.a1k(a1k),
 	.reg_address_in(reg_address),

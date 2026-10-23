@@ -37,6 +37,8 @@ module picmatic
 	input       [9:1] flag,
 	input      [11:0] gun_x,
 	input      [11:0] gun_y,
+	output            gun_valid,
+	output signed [15:0] calibration_x, calibration_y,
 
 	// NVRAM load/save (HPS)
 	input      [11:0] nv_addr,
@@ -74,8 +76,29 @@ dpram #(12,8) nvram
 
 wire [3:0] reg_sel = addr[15:12];
 
-// ponytail: writes (reg0 picmatic_io, reg5/6 gun latch select) are ignored. One gun feeds
-// both latches and the trigger bits tell the players apart; add the latch select with a 2nd gun.
+// Both coordinate latches share the one mouse, as in the original core.
+// PAL50 selects which physical gun is sensed using F60000 bit 0.
+// Accept either byte lane; a word write is not a board byte transaction.
+reg [7:0] io_control;
+always @(posedge clk) begin
+    if (reset) io_control <= 0;
+    else if (clk7_en && sel_io && reg_sel == 0 && (hwr ^ lwr))
+        io_control <= hwr ? din[15:8] : din[7:0];
+end
+assign gun_valid = io_control[0] ? !flag[9] : !flag[8];
+// Mirror only calibration bytes, on the same writes as the real dual-port SRAM.
+// No reset arm: NVRAM and its mirrors both survive a game reset. HPS restore
+// uses linear nv_addr, CPU bytes use addr[12:1]. Low byte precedes high byte.
+reg [7:0] calibration[0:7];
+integer cal_i;
+initial for (cal_i=0;cal_i<8;cal_i=cal_i+1) calibration[cal_i]=0;
+always @(posedge clk) begin
+    if (sel_nvram && (hwr || lwr) && addr[12:1]<12'd8)
+        calibration[addr[3:1]] <= wbyte;
+    if (nv_we && nv_addr<12'd8) calibration[nv_addr[2:0]] <= nv_din;
+end
+assign calibration_x = io_control[0] ? {calibration[5],calibration[4]} : {calibration[1],calibration[0]};
+assign calibration_y = io_control[0] ? {calibration[7],calibration[6]} : {calibration[3],calibration[2]};
 wire [7:0] btn = ~{flag[8], flag[9], flag[6], flag[7], 4'b0000};
 
 reg [7:0] io_q;

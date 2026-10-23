@@ -401,11 +401,11 @@ always @(posedge clk) begin
 	reg [4:0] cpu_cfg = 0;
 
 	if (reset) begin
-		chipset_config <= t_chipset_config;
-		ide_cfg <= t_ide_config;
-		cpu_cfg <= {t_cpu_config[7:6], t_cpu_config[5], t_cpu_config[1:0]};
-		memory_config[5:0] <= t_memory_config[5:0];
-		memory_config[7] <= t_memory_config[7];
+		chipset_config <= 6'b001000; // fixed PAL ECS Agnus
+		ide_cfg <= 0;
+		cpu_cfg <= 0; // fx68k 68000 only
+		memory_config[5:0] <= 0; // 512K chip, no expansion
+		memory_config[7] <= 0;
 	end
 	
 	ide_config <= ide_cfg;
@@ -413,8 +413,8 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-	cache_config <= t_cpu_config[4:2];
-	memory_config[6] <= t_memory_config[6];
+	cache_config <= 0;
+	memory_config[6] <= 0;
 end
 
 reg [7:0] cmd;
