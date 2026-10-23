@@ -24,6 +24,7 @@ set_global_assignment -name VERILOG_FILE rtl/minimig.v
 set_global_assignment -name VERILOG_FILE rtl/cpu_wrapper.v
 set_global_assignment -name VERILOG_FILE rtl/cpu_cycles.v
 set_global_assignment -name VERILOG_FILE rtl/picmatic.v
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/picmatic_gun.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/uio_boot.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ld_player.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ld_video.sv

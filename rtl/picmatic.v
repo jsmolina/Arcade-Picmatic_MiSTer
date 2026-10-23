@@ -35,8 +35,10 @@ module picmatic
 
 	// cabinet
 	input       [9:1] flag,
-	input      [11:0] gun_x,
-	input      [11:0] gun_y,
+	input      [11:0] gun_x0,
+	input      [11:0] gun_y0,
+	input      [11:0] gun_x1,
+	input      [11:0] gun_y1,
 
 	// NVRAM load/save (HPS)
 	input      [11:0] nv_addr,
@@ -73,17 +75,37 @@ dpram #(12,8) nvram
 // $F6 board I/O
 
 wire [3:0] reg_sel = addr[15:12];
+wire [7:0] io_wbyte = hwr ? din[15:8] : din[7:0];
 
-// ponytail: writes (reg0 picmatic_io, reg5/6 gun latch select) are ignored. One gun feeds
-// both latches and the trigger bits tell the players apart; add the latch select with a 2nd gun.
+reg [7:0] picmatic_io;
+reg       gun_ply;
+always @(posedge clk) begin
+	if (reset) begin
+		picmatic_io <= 0;
+		gun_ply <= 0;
+	end
+	else if (sel_io && (hwr || lwr)) begin
+		case (reg_sel)
+			0: picmatic_io <= io_wbyte;
+			5: gun_ply <= 0;
+			6: gun_ply <= 1;
+			default: ;
+		endcase
+	end
+end
+
+// WinUAE selects lightpen index 1 - gun_ply. The top level mirrors its single
+// mouse aim into both inputs until a second independent gun is available.
+wire [11:0] selected_gun_x = gun_ply ? gun_x0 : gun_x1;
+wire [11:0] selected_gun_y = gun_ply ? gun_y0 : gun_y1;
 wire [7:0] btn = ~{flag[8], flag[9], flag[6], flag[7], 4'b0000};
 
 reg [7:0] io_q;
 always @(posedge clk) begin
 	case (reg_sel)
-		0: io_q <= gun_y[7:0];
-		1: io_q <= gun_x[7:0];
-		2: io_q <= {gun_x[11:8], gun_y[11:8]};
+		0: io_q <= selected_gun_y[7:0];
+		1: io_q <= selected_gun_x[7:0];
+		2: io_q <= {selected_gun_x[11:8], selected_gun_y[11:8]};
 		3: io_q <= btn;
 		default: io_q <= 8'h00;
 	endcase

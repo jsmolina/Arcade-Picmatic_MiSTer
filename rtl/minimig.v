@@ -1215,8 +1215,10 @@ picmatic picmatic_inst
 	.serper      (pm_serper            ),
 
 	.flag        (pm_flag              ),
-	.gun_x       (pm_gun_x             ),
-	.gun_y       (pm_gun_y             ),
+	.gun_x0      (pm_gun_x             ),
+	.gun_y0      (pm_gun_y             ),
+	.gun_x1      (pm_gun_x             ),
+	.gun_y1      (pm_gun_y             ),
 
 	.nv_addr     (pm_nv_addr           ),
 	.nv_din      (pm_nv_din            ),
@@ -1257,4 +1259,3 @@ assign rst_out = reset;
 
 
 endmodule
-

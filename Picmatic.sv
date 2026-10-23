@@ -498,26 +498,22 @@ wire [4:0] p_r   = side ? p_me  : p_oth;
 // WinUAE alg_flag bits 9..1: rholster lholster rtrig ltrig rcoin lcoin rstart lstart service
 wire [9:1] pm_flag = {p_r[1], p_l[1], p_r[0], p_l[0], p_r[2], p_l[2], p_r[3], p_l[3], p_l[4] | p_r[4]};
 
-// mouse gun: hires pixels across the disc picture, lines down it
-reg  [9:0] gun_x = 384;
-reg  [8:0] gun_y = 144;
-always @(posedge clk_sys) begin
-	reg old_stb;
-	reg [10:0] nx;
-	reg  [9:0] ny;
+wire [9:0] gun_x;
+wire [8:0] gun_y;
+wire [11:0] gun_x_reg;
+wire [11:0] gun_y_reg;
 
-	old_stb <= ps2_mouse[24];
-	if (old_stb != ps2_mouse[24]) begin
-		nx = {1'b0, gun_x} + {{3{ps2_mouse[4]}}, ps2_mouse[15:8]};
-		ny = {1'b0, gun_y} - {{2{ps2_mouse[5]}}, ps2_mouse[23:16]};
-		gun_x <= nx[10] ? 10'd0 : (nx > 767) ? 10'd767 : nx[9:0];
-		gun_y <= ny[9]  ?  9'd0 : (ny > 287) ?  9'd287 : ny[8:0];
-	end
-end
-
-// gun registers: picture position plus the calibration knobs
-wire [11:0] gun_x_reg = {2'b00, gun_x} + {{6{status[14]}}, status[14:11], 2'b00};
-wire [11:0] gun_y_reg = {3'b000, gun_y} + {{7{status[18]}}, status[18:15], 1'b0};
+picmatic_gun picmatic_gun
+(
+	.clk(clk_sys),
+	.ps2_mouse(ps2_mouse),
+	.x_adjust(status[14:11]),
+	.y_adjust(status[18:15]),
+	.picture_x(gun_x),
+	.picture_y(gun_y),
+	.gun_x(gun_x_reg),
+	.gun_y(gun_y_reg)
+);
 
 ////////////////////////////  LASERDISC  ////////////////////////////////////
 

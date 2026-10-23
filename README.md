@@ -7,8 +7,9 @@ plus the LaserDisc video path from
 [Arcade-LaserdiscGames_MiSTer](https://github.com/MiSTer-devel/Arcade-LaserdiscGames_MiSTer), with
 board behaviour taken from WinUAE (`arcadia.cpp`).
 
-Status: **untested on hardware.** The new blocks pass simulation (see *Simulation*) and the whole
-core lints clean in Verilator, but it has not been through Quartus yet.
+Status: **untested on hardware.** The focused simulations pass (see *Simulation*). Full-core
+Verilator lint currently stops on existing mixed blocking/non-blocking assignment errors in
+`rtl/fpga-toccata/toccata.sv` and `rtl/fx68k/fx68k.sv`; this core has not been through Quartus yet.
 
 ## What is inside
 
@@ -57,13 +58,14 @@ coin, start and trigger.
 ## Calibration (OSD)
 
 * *Disc H/V position* moves the disc picture under the Amiga graphics.
-* *Gun X/Y adjust* shifts what the game reads from the gun latch until shots land on the crosshair.
+* *Gun X/Y adjust* shifts the coordinates reported to the game relative to the displayed disc picture.
 
 ## Simulation
 
     sim/run.sh ld_player        # LDP-1450 protocol + serial, against WinUAE behaviour
     sim/run.sh uio_boot         # MRA boot through the real userio.v
     sim/run.sh picmatic         # board registers and inputs, all combinations vs WinUAE
+    sim/run.sh mouse_gun        # mouse aim + click, checked through the F6 gun registers
     sim/run.sh ld_video +DLV=clip.dlv +FRAME=3 +PPM=out.ppm   # .dlv -> screen, then:
     sim/check_ld_video.py clip.dlv 3 out.ppm
     sim/lint/lint.sh            # whole core
@@ -76,7 +78,7 @@ coin, start and trigger.
 * Not yet compiled in Quartus, so fit and timing are unknown. `core_jpeg` is upstream's; the
   LaserDisc core builds a locally tweaked copy (`*_flat` Huffman tables) that may matter for Quartus.
 * LDP-1450 on-screen text (user index) is accepted and acknowledged but not drawn.
-* Gun calibration defaults are guesses; the second gun is not wired.
+* Gun alignment still needs confirmation on hardware; the second gun is not wired.
 * Only Marbella Vice has an MRA. Tierras Salvajes and Zorton Brothers use the same board.
 
 ## Fix
