@@ -26,7 +26,11 @@ one Amiga lores pixel and the Amiga beam drives everything: no scaler, and one c
 for the whole disc path.
 
 ## Files you need
+### Arcade files
+* Copy the MRA files into _Arcade
+* Copy the .rbf file into _Arcade/cores
 
+### ROMS
 From the WinUAE Marbella Vice package:
 
 * `amiga-os-130.rom` (Kickstart 1.3, CRC `c4f0f55f`)
@@ -34,12 +38,15 @@ From the WinUAE Marbella Vice package:
 * the PAL LaserDisc capture, e.g. `Marbella_Vice_-_Picmatic_1994_Laserdisc_PAL_Spanish.avi`
 
 Put the ROMs in `games/mame/marbvice.zip` (or the Kickstart in `kick13.zip`), copy
-`releases/Marbella Vice.mra` to `_Arcade`, and convert the disc:
+`releases/Marbella Vice.mra` to `_Arcade`, 
+
+### Laserdisk
+Convert the disc:
 
     tools/avi2dlv.py Marbella_Vice_-_Picmatic_1994_Laserdisc_PAL_Spanish.avi marbella_vice.dlv
 
 (needs `ffmpeg` and `jpegtran`; about 1.2 GB). 
-Put the dlv file in `games/marbvice/` and mount it with *Mount LaserDisc*.
+Put the dlv file in `games/Picmatic/` and mount it with *Mount LaserDisc*.
 
 ## Controls
 
@@ -71,7 +78,15 @@ coin, start and trigger.
 
 `doc/picmatic-plan.md` has the design study; `doc/Minimig-README.md` is the upstream README.
 
+
+## Known gaps
+* Implemented Marbella Vice, Tierras Salvajes and Los Justicieros. Zorton Brothers use the same board but I do not have data for it.
+
+
 ## Fix list
+**Fix by Alberto Conde**
+* Connected Lighgun
+
 **Fix by Jose Luis Rodriguez**
 
 With the original core, the game would fail to start on the MiSTer because the ROM never made it into SDRAM.

@@ -1,0 +1,30 @@
+<misterromdescription>
+    <name>Los Justicieros</name>
+    <region>Spain</region>
+    <homebrew>no</homebrew>
+    <bootleg>no</bootleg>
+    <version></version>
+    <setname>zortonbr</setname>
+    <year>1993</year>
+    <manufacturer>Picmatic</manufacturer>
+    <category>LaserDisc / Shooter</category>
+    <rbf>Picmatic</rbf>
+
+    <resolution>15kHz</resolution>
+    <rotation>horizontal</rotation>
+    <players>2</players>
+    <special_controls>lightgun</special_controls>
+    <num_buttons>5</num_buttons>
+
+    <!-- ioctl index 0 = Kickstart 1.3 at $F80000 and $FC0000, game ROM at $F00000 -->
+    <rom index="0" zip="losjusticieros.zip|kick13.zip" md5="none">
+        <part name="amiga-os-130.rom" crc="c4f0f55f"/>
+        <part name="amiga-os-130.rom" crc="c4f0f55f"/>
+        <interleave output="16">
+            <part name="picmatic_zb_v1.01_u1.bin" crc="6a051c6a" map="01"/>
+            <part name="picmatic_zb_v1.01_u2.bin" crc="21e63949" map="10"/>
+        </interleave>
+    </rom>
+
+    <nvram index="4" size="4096"/>
+</misterromdescription>
